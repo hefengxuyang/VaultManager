@@ -27,7 +27,7 @@ contract VaultController is Ownable {
     address public governance;
     address public rebalancer;
     address public migrator;
-    address public fundManager;
+    address public manager;
 
     address[] public supportedPairs;
 
@@ -45,7 +45,7 @@ contract VaultController is Ownable {
     event FundGovernanceSet(address _governance);
     event FundRebalancerSet(address _rebalancer);
     event FundMigratorSet(address _migrator);
-    event FundManagerSet(address _fundManager);
+    event VaultManagerSet(address _manager);
 
     event ApproveTo(address _token, address _receiver, uint256 _amount);
     event DepositToPool(address _pair, uint256 _amount);
@@ -88,8 +88,8 @@ contract VaultController is Ownable {
         _;
     }
 
-    modifier onlyFundManager() {
-        require(fundManager == msg.sender, "Caller is not the fundManager.");
+    modifier onlyManager() {
+        require(manager == msg.sender, "Caller is not the manager.");
         _;
     }
 
@@ -108,9 +108,9 @@ contract VaultController is Ownable {
         emit FundMigratorSet(_migrator);
     }
 
-    function setFundManager(address _fundManager) external onlyGovernance {
-        fundManager = _fundManager;
-        emit FundManagerSet(_fundManager);
+    function setVaultManager(address _manager) external onlyGovernance {
+        manager = _manager;
+        emit VaultManagerSet(_manager);
     }
 
     function _approveTo(address _token, address _receiver, uint256 _amount) internal {
@@ -138,7 +138,7 @@ contract VaultController is Ownable {
     }
 
     function approveToManager(address _token, uint256 _amount) external onlyGovernance {
-        _approveTo(_token, fundManager, _amount);
+        _approveTo(_token, manager, _amount);
     }
 
     function approveToMigrator(address _token, uint256 _amount) external onlyGovernance {
@@ -162,8 +162,8 @@ contract VaultController is Ownable {
         _depositToPool(_pair, _amount);
     }
 
-    // deposit by fund manager
-    function depositToPoolByManager(address _pair, uint256 _amount) external onlyFundManager {
+    // deposit by manager
+    function depositToPoolByManager(address _pair, uint256 _amount) external onlyManager {
         _depositToPool(_pair, _amount);
     }
 
@@ -184,8 +184,8 @@ contract VaultController is Ownable {
         _withdrawFromPool(_pair, _amount);
     }
 
-    // withdraw by fund manager
-    function withdrawFromPoolByManager(address _pair, uint256 _amount) external onlyFundManager {
+    // withdraw by manager
+    function withdrawFromPoolByManager(address _pair, uint256 _amount) external onlyManager {
         _withdrawFromPool(_pair, _amount);
     }
 
@@ -210,12 +210,12 @@ contract VaultController is Ownable {
         (amount0, amount1) = _split(_pair, _liquidity, _deadline);
     }
 
-    // remove liquity by fund manager, which split the liquity to token0 and token1
+    // remove liquity by manager, which split the liquity to token0 and token1
     function splitByManager(
         address _pair, 
         uint256 _liquidity, 
         uint256 _deadline
-    ) external onlyFundManager returns (uint256 amount0, uint256 amount1) {
+    ) external onlyManager returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = _split(_pair, _liquidity, _deadline);
     }
 
@@ -242,13 +242,13 @@ contract VaultController is Ownable {
         (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
     }
 
-    // add liquity by fund manager, which compose token0 and token1 into liquity
+    // add liquity by manager, which compose token0 and token1 into liquity
     function composeByManager(
         address _pair, 
         uint256 _desiredAmount0, 
         uint256 _desiredAmount1, 
         uint256 _deadline
-    ) external onlyFundManager returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+    ) external onlyManager returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
         (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
     }
 
