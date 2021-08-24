@@ -105,7 +105,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         uint256 amount0, 
         uint256 amount1
     ) {
-        require(_amount0Desired > 0 || _amount1Desired > 0, "The amount0Desired or amount1Desired is zero");
+        require(_amount0Desired > 0 && _amount1Desired > 0, "The amount0Desired or amount1Desired is zero");
         require(_to != address(0), "Invalid receive address");
 
         // Calculate amounts proportional to vault's holdings
@@ -113,8 +113,8 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         require(shares > 0, "Invalid shares");
 
         // Pull in tokens from sender
-        if (amount0 > 0) IERC20(token0).safeTransferFrom(msg.sender, vaultControllerContract, amount0);
-        if (amount1 > 0) IERC20(token1).safeTransferFrom(msg.sender, vaultControllerContract, amount1);
+        IERC20(token0).safeTransferFrom(msg.sender, vaultControllerContract, amount0);
+        IERC20(token1).safeTransferFrom(msg.sender, vaultControllerContract, amount1);
 
         // Compose into the base pair liquity
         vaultController.composeByManager(basePair, amount0, amount1, uint256(-1));
@@ -138,22 +138,15 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         (uint256 total0, uint256 total1) = getTotalAmounts();
 
         // If total supply > 0, vault can't be empty
-        assert(totalSupply == 0 || total0 > 0 || total1 > 0);
+        assert(totalSupply == 0 || (total0 > 0 && total1 > 0));
 
         if (totalSupply == 0) {
             // For first deposit, just use the amounts desired
             amount0 = _amount0Desired;
             amount1 = _amount1Desired;
-            shares = Math.max(amount0, amount1);
-        } else if (total0 == 0) {
-            amount1 = _amount1Desired;
-            shares = amount1.mul(totalSupply).div(total1);
-        } else if (total1 == 0) {
-            amount0 = _amount0Desired;
-            shares = amount0.mul(totalSupply).div(total0);
+            shares = Math.min(amount0, amount1);
         } else {
             uint256 cross = Math.min(_amount0Desired.mul(total1), _amount1Desired.mul(total0));
-            require(cross > 0, "cross");
 
             // Round up amounts
             amount0 = cross.sub(1).div(total1).add(1);
