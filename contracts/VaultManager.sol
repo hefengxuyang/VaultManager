@@ -15,15 +15,15 @@ import "./interfaces/IManager.sol";
 import "./FundController.sol";
 
 /**
- * @title FundManager
+ * @title VaultManager
  * @author yang
  * @notice This contract is the primary contract for the minning pool.
  */
-contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
+contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    bool public fundDisabled; // Boolean that, if true, disables the primary functionality of this FundManager.
+    bool public fundDisabled; // Boolean that, if true, disables the primary functionality of this contract.
 
     address payable private fundControllerContract; // Address of the FundController.
     FundController public fundController;    // FundController contract object.

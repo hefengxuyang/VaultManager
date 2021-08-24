@@ -15,11 +15,11 @@ import "./interfaces/master/IMdexMaster.sol";
 import "./interfaces/master/IPancakeMaster.sol";
 
 /**
- * @title Fund Controller
+ * @title VaultController
  * @author yang
  * @notice This contract handles deposits to and withdrawals from the liquidity pools.
  */
-contract FundController is Ownable {
+contract VaultController is Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;

@@ -9,10 +9,10 @@ import './interfaces/swap/ISwapV2Pair.sol';
 import './interfaces/swap/ISwapV2Router.sol';
 
 /**
- * @title FundMigrator
- * @notice FundMigrator remove old liquity and add new liquity.
+ * @title VaultMigrator
+ * @notice VaultMigrator remove old liquity and add new liquity.
  */
-contract FundMigrator {
+contract VaultMigrator {
     using SafeMath for uint256;
 
     address public governance;
