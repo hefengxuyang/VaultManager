@@ -28,9 +28,9 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
     address payable private fundControllerContract; // Address of the FundController.
     FundController public fundController;    // FundController contract object.
 
-    ISwapV2Pair public immutable pair;      // Initilize of the pair
-    address public immutable token0;         // the first token of the pair
-    address public immutable token1;         // the second token of the pair
+    address public immutable basePair;      // Initilize of the pair
+    address public immutable token0;         // The first token of the pair
+    address public immutable token1;         // The second token of the pair
 
     uint256 public maxTotalSupply;       // The max total supply for shares.
     uint256 public withdrawalFeeRate;    // The current withdrawal fee rate (scaled by 1e18).
@@ -52,7 +52,7 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
         uint256 _withdrawalFeeRate,
         uint256 _maxTotalSupply
     ) public ERC20("Fund Vault", "FV") {  
-        pair = ISwapV2Pair(_pair);
+        basePair = _pair;
         token0 = ISwapV2Pair(_pair).token0();
         token1 = ISwapV2Pair(_pair).token1();
 
@@ -115,6 +115,9 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
         // Pull in tokens from sender
         if (amount0 > 0) IERC20(token0).safeTransferFrom(msg.sender, fundControllerContract, amount0);
         if (amount1 > 0) IERC20(token1).safeTransferFrom(msg.sender, fundControllerContract, amount1);
+
+        // Compose into the base pair liquity
+        fundController.composeByManager(basePair, amount0, amount1, uint256(-1));
 
         // Mint shares to recipient
         _mint(_to, shares);

@@ -198,7 +198,7 @@ contract FundController is Ownable {
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
         address token1 = ISwapV2Pair(_pair).token1();
-        (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 0, 0, address(this), _deadline);
+        (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
     }
 
     // remove liquity by rebalancer, which split the liquity to token0 and token1
@@ -229,7 +229,7 @@ contract FundController is Ownable {
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
         address token1 = ISwapV2Pair(_pair).token1();
-        (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 0, 0, address(this), _deadline);
+        (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
     }
 
     // add liquity by rebalancer, which compose token0 and token1 into liquity
