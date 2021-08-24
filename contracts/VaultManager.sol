@@ -110,7 +110,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
 
         // Calculate amounts proportional to vault's holdings
         (shares, amount0, amount1) = _calcSharesAndAmounts(_amount0Desired, _amount1Desired);
-        require(shares > 0, "Invalid shares");
+        require(shares > 0 && amount0 > 0 && amount1 > 0, "Invalid shares and amounts");
 
         // Pull in tokens from sender
         IERC20(token0).safeTransferFrom(msg.sender, vaultControllerContract, amount0);
