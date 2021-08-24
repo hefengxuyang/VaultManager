@@ -2,9 +2,9 @@
 pragma solidity ^0.6.0;
 
 interface IManager {
-    function deposit(address _pair, uint256 _amount) external;
+    function deposit(uint256 _amount0, uint256 _amount1, address _to) external returns (uint256, uint256, uint256);
 
-    function withdraw(uint256 _amount) external returns (uint256[] memory);
+    function withdraw(uint256 _shares, address _to) external returns (uint256, uint256);
 
-    function forwardLostFunds(address _token, address _to) external returns (bool);
+    function getTotalAmounts() external view returns (uint256, uint256);
 }

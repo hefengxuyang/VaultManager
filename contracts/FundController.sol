@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./interfaces/IMigrator.sol";
 import "./interfaces/swap/ISwapV2Pair.sol";
+import "./interfaces/swap/ISwapV2Router.sol";
 import "./interfaces/master/IBakeryMaster.sol";
 import "./interfaces/master/IMdexMaster.sol";
 import "./interfaces/master/IPancakeMaster.sol";
@@ -17,28 +18,25 @@ import "./interfaces/master/IPancakeMaster.sol";
  * @title Fund Controller
  * @author yang
  * @notice This contract handles deposits to and withdrawals from the liquidity pools.
- * 1、 管理员管理
- * 2、 调仓管理
- * 3、 仓位查询
  */
 contract FundController is Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public governance;  // 治理（管理员）地址
-    address public rebalancer;  // 策略调度员地址
-    address public migrator;    // 迁移合约地址
-    address public fundManager; // FundManager 管理合约地址
+    address public governance;
+    address public rebalancer;
+    address public migrator;
+    address public fundManager;
 
     address[] public supportedPairs;
 
     enum LiquidityPool { BakeryPool, MdexPool, PancakePool }
-    mapping(address => LiquidityPool) public masterPools;   // 挖矿流动性合约池和 LiquidityPool 的映射关系
-    mapping(address => address) public pairMasters;         // 挖矿流动性合约池中的交易对和 master 的映射关系
-    mapping(address => address) public pairRouters;         // 挖矿流动性合约池中的交易对和 router 的映射关系
-    mapping(address => uint256) public pairPids;            // 挖矿流动性合约池中的交易对和 pid 的映射关系
-    mapping(address => bool) public pairTokenExists;        // 挖矿流动性合约池中的交易对和 是否存在(exist) 的映射关系
+    mapping(address => LiquidityPool) public masterPools;
+    mapping(address => address) public pairMasters;
+    mapping(address => address) public pairRouters;
+    mapping(address => uint256) public pairPids;
+    mapping(address => bool) public pairTokenExists;
 
     address constant private BAKERY_MASTER_CONTRACT = 0xe17cF95Bd55F749ed56c76193AaafF99422b7487;
     // address constant private MDEX_MASTER_CONTRACT = 0xe2f2a5C287993345a840Db3B0845fbC70f5935a5;
@@ -115,7 +113,6 @@ contract FundController is Ownable {
         emit FundManagerSet(_fundManager);
     }
 
-    // 同意ERC20合约的安全转账操作approve(内部函数)
     function _approveTo(address _token, address _receiver, uint256 _amount) internal {
         require(_token != address(0), "Invalid erc20 token contract.");
         IERC20 token = IERC20(_token);
@@ -130,29 +127,24 @@ contract FundController is Ownable {
         emit ApproveTo(_token, _receiver, _amount);
     }
 
-    // 同意对指定的接收对象调用的approve
     function approveTo(address _token, address _receiver, uint256 _amount) external onlyGovernance {
         _approveTo(_token, _receiver, _amount);
     }
 
-    // 同意对流动性挖矿合约的approve
     function approveToMaster(address _pair, uint256 _amount) external onlyGovernance {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         _approveTo(_pair, master, _amount);
     }
 
-    // 同意对资产管理合约调用的approve
     function approveToManager(address _token, uint256 _amount) external onlyGovernance {
         _approveTo(_token, fundManager, _amount);
     }
 
-    // 同意对迁移转换合约Migrator调用的approve
     function approveToMigrator(address _token, uint256 _amount) external onlyGovernance {
         _approveTo(_token, migrator, _amount);
     }
 
-    // 存储到挖矿池中(内部函数)
     function _depositToPool(address _pair, uint256 _amount) internal {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
@@ -165,17 +157,16 @@ contract FundController is Ownable {
         emit DepositToPool(_pair, _amount);
     }
 
-    // 调度员操作的存储
+    // deposit by rebalancer
     function depositToPool(address _pair, uint256 _amount) external onlyRebalancer {
         _depositToPool(_pair, _amount);
     }
 
-    // 管理员(FundManger)操作的存储
+    // deposit by fund manager
     function depositToPoolByManager(address _pair, uint256 _amount) external onlyFundManager {
         _depositToPool(_pair, _amount);
     }
 
-    // 从挖矿池中提现(内部函数)
     function _withdrawFromPool(address _pair, uint256 _amount) internal {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
@@ -188,17 +179,68 @@ contract FundController is Ownable {
         emit WithdrawFromPool(_pair, _amount);
     }
 
-    // 调度员操作的提现
+    // withdraw by rebalancer
     function withdrawFromPool(address _pair, uint256 _amount) external onlyRebalancer {
         _withdrawFromPool(_pair, _amount);
     }
 
-    // 管理员(FundManger)操作的提现
+    // withdraw by fund manager
     function withdrawFromPoolByManager(address _pair, uint256 _amount) external onlyFundManager {
         _withdrawFromPool(_pair, _amount);
     }
 
-    // 挖矿调仓
+    function _split(address _pair, uint256 _liquidity, uint256 _deadline) internal returns (uint256 amount0, uint256 amount1) {
+        require(pairTokenExists[_pair], "Invalid liquity pair contract.");
+        address router = pairRouters[_pair];
+        address token0 = ISwapV2Pair(_pair).token0();
+        address token1 = ISwapV2Pair(_pair).token1();
+        (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 0, 0, address(this), _deadline);
+    }
+
+    // remove liquity by rebalancer, which split the liquity to token0 and token1
+    function split(address _pair, uint256 _liquidity, uint256 _deadline) external onlyRebalancer returns (uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = _split(_pair, _liquidity, _deadline);
+    }
+
+    // remove liquity by fund manager, which split the liquity to token0 and token1
+    function splitByManager(address _pair, uint256 _liquidity, uint256 _deadline) external onlyFundManager returns (uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = _split(_pair, _liquidity, _deadline);
+    }
+
+    function _compose(
+        address _pair, 
+        uint256 _desiredAmount0, 
+        uint256 _desiredAmount1, 
+        uint256 _deadline
+    ) internal returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        require(pairTokenExists[_pair], "Invalid liquity pair contract.");
+        address router = pairRouters[_pair];
+        address token0 = ISwapV2Pair(_pair).token0();
+        address token1 = ISwapV2Pair(_pair).token1();
+        (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 0, 0, address(this), _deadline);
+    }
+
+    // add liquity by rebalancer, which compose token0 and token1 into liquity
+    function compose(
+        address _pair, 
+        uint256 _desiredAmount0, 
+        uint256 _desiredAmount1, 
+        uint256 _deadline
+    ) external onlyRebalancer returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
+    }
+
+    // add liquity by fund manager, which compose token0 and token1 into liquity
+    function composeByManager(
+        address _pair, 
+        uint256 _desiredAmount0, 
+        uint256 _desiredAmount1, 
+        uint256 _deadline
+    ) external onlyFundManager returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
+    }
+
+    // rebalance the liquity from a pool to another
     function rebalance(address _oldPair, address _newPair, uint256 _liquidity, uint256 _deadline) external onlyRebalancer returns (uint256 newLiquidity) {
         require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
         address oldRouter = pairRouters[_oldPair];
@@ -209,13 +251,13 @@ contract FundController is Ownable {
         emit Rebalance(_liquidity, newLiquidity);
     }
 
-    // 查询未投资的流动性代币的余额
+    // get the contract balance by token
     function getTokenBalance(address _token) external view returns (uint256) {
         require(_token != address(0), "Invalid ERC20 token contract.");
         return IERC20(_token).balanceOf(address(this));
     }
 
-    // 查询挖矿的奖励代币合约地址
+    // get the address of reward token by pair
     function getRewardToken(address _pair) external view returns (address) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
@@ -226,7 +268,7 @@ contract FundController is Ownable {
         else revert("Invalid pool index.");
     }
 
-    // 查询待领取的奖励金额
+    // get the amount of reward token by pair
     function getPoolReward(address _pair) external view returns (uint256) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
@@ -238,7 +280,7 @@ contract FundController is Ownable {
         else revert("Invalid pool index.");
     }
 
-    // 查询已存入挖矿的流动性代币本金数量
+    // get the amount of principal token(liquity token) by pair
     function getPoolPrincipal(address _pair) external view returns (uint256 amount) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
@@ -250,13 +292,11 @@ contract FundController is Ownable {
         else revert("Invalid pool index.");
     }
 
-    // 转出误存或流动性迁移误差的的ERC20代币(除了本合约管理的pair交易对代币)，以防意外操作将资金转移到本合约
-    function forwardLostFunds(address _token, address _to) external onlyOwner returns (bool) {
-        require(!pairTokenExists[_token], "Forward lost fund must not be pair token.");
-        IERC20 token = IERC20(_token);
-        uint256 balance = token.balanceOf(address(this));
-        if (balance <= 0) return false;
-        token.safeTransfer(_to, balance);
-        return true;
+    // get the supported pair tokens
+    function getSupportedPairs() external view returns (address[] memory pairs) {
+        pairs = new address[](supportedPairs.length);
+        for (uint256 i = 0; i < supportedPairs.length; i++) {
+            pairs[i] = supportedPairs[i];
+        }
     }
 }
