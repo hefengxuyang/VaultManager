@@ -16,6 +16,7 @@ import "./FundController.sol";
 
 /**
  * @title FundManager
+ * @author yang
  * @notice This contract is the primary contract for the minning pool.
  */
 contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
@@ -45,7 +46,7 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
         _;
     }
 
-    // Initilize the contract
+    // initilize the contract
     constructor (
         address _pair,
         uint256 _withdrawalFeeRate,
@@ -60,7 +61,7 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
         withdrawalFeeBeneficiary = msg.sender;
     }
 
-    // Set the contract disabled
+    // set the contract disabled
     function setFundDisabled(bool _fundDisabled) external onlyOwner {
         require(_fundDisabled != fundDisabled, "No change to fund enabled/disabled status.");
         fundDisabled = _fundDisabled;
@@ -70,7 +71,7 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
             emit FundEnabled();
     }
 
-    // Set the FundController address
+    // set the FundController address
     function setFundController(address payable _fundController) external fundEnabled onlyOwner {
         fundControllerContract = _fundController;
         fundController = FundController(fundControllerContract);
@@ -96,19 +97,19 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
 
     // deposit
     function deposit(
-        uint256 amount0Desired,
-        uint256 amount1Desired,
-        address to
+        uint256 _amount0Desired,
+        uint256 _amount1Desired,
+        address _to
     ) external override fundEnabled nonReentrant returns (
         uint256 shares, 
         uint256 amount0, 
         uint256 amount1
     ) {
-        require(amount0Desired > 0 || amount1Desired > 0, "The amount0Desired or amount1Desired is zero");
-        require(to != address(0), "Invalid receive address");
+        require(_amount0Desired > 0 || _amount1Desired > 0, "The amount0Desired or amount1Desired is zero");
+        require(_to != address(0), "Invalid receive address");
 
         // Calculate amounts proportional to vault's holdings
-        (shares, amount0, amount1) = _calcSharesAndAmounts(amount0Desired, amount1Desired);
+        (shares, amount0, amount1) = _calcSharesAndAmounts(_amount0Desired, _amount1Desired);
         require(shares > 0, "Invalid shares");
 
         // Pull in tokens from sender
@@ -116,15 +117,15 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
         if (amount1 > 0) IERC20(token1).safeTransferFrom(msg.sender, fundControllerContract, amount1);
 
         // Mint shares to recipient
-        _mint(to, shares);
+        _mint(_to, shares);
         require(totalSupply() <= maxTotalSupply, "Exceed maxTotalSupply");
-        emit Deposit(msg.sender, to, shares, amount0, amount1);
+        emit Deposit(msg.sender, _to, shares, amount0, amount1);
     }
 
     // calculate the shares and the needed amount0, amount1
     function _calcSharesAndAmounts(
-        uint256 amount0Desired, 
-        uint256 amount1Desired
+        uint256 _amount0Desired, 
+        uint256 _amount1Desired
     ) internal view returns (
         uint256 shares,
         uint256 amount0,
@@ -138,17 +139,17 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
 
         if (totalSupply == 0) {
             // For first deposit, just use the amounts desired
-            amount0 = amount0Desired;
-            amount1 = amount1Desired;
+            amount0 = _amount0Desired;
+            amount1 = _amount1Desired;
             shares = Math.max(amount0, amount1);
         } else if (total0 == 0) {
-            amount1 = amount1Desired;
+            amount1 = _amount1Desired;
             shares = amount1.mul(totalSupply).div(total1);
         } else if (total1 == 0) {
-            amount0 = amount0Desired;
+            amount0 = _amount0Desired;
             shares = amount0.mul(totalSupply).div(total0);
         } else {
-            uint256 cross = Math.min(amount0Desired.mul(total1), amount1Desired.mul(total0));
+            uint256 cross = Math.min(_amount0Desired.mul(total1), _amount1Desired.mul(total0));
             require(cross > 0, "cross");
 
             // Round up amounts
@@ -179,23 +180,23 @@ contract FundManager is IManager, Ownable, ERC20, ReentrancyGuard {
 
     // withdraw
     function withdraw(
-        uint256 shares,
-        address to
+        uint256 _shares,
+        address _to
     ) external override fundEnabled nonReentrant returns (
         uint256 amount0, 
         uint256 amount1
     ) {
-        require(shares > 0, "Invalid shares");
-        require(to != address(0), "Invalid receive address");
+        require(_shares > 0, "Invalid shares");
+        require(_to != address(0), "Invalid receive address");
         uint256 totalSupply = totalSupply();
         require(totalSupply > 0, "Can't withdraw with zero deposit");
 
         // Burn shares
-        _burn(msg.sender, shares);
-        (amount0, amount1) = _withdrawPrincipal(shares, totalSupply, to);    // Send principal tokens to recipient
-        _withdrawReward(shares, totalSupply, to);       // Send reward tokens to recipient
+        _burn(msg.sender, _shares);
+        (amount0, amount1) = _withdrawPrincipal(_shares, totalSupply, _to);    // Send principal tokens to recipient
+        _withdrawReward(_shares, totalSupply, _to);       // Send reward tokens to recipient
         
-        emit Withdraw(msg.sender, to, shares, amount0, amount1);
+        emit Withdraw(msg.sender, _to, _shares, amount0, amount1);
     }
 
     // withdraw from FundController by shares

@@ -189,7 +189,11 @@ contract FundController is Ownable {
         _withdrawFromPool(_pair, _amount);
     }
 
-    function _split(address _pair, uint256 _liquidity, uint256 _deadline) internal returns (uint256 amount0, uint256 amount1) {
+    function _split(
+        address _pair, 
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) internal returns (uint256 amount0, uint256 amount1) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
@@ -198,12 +202,20 @@ contract FundController is Ownable {
     }
 
     // remove liquity by rebalancer, which split the liquity to token0 and token1
-    function split(address _pair, uint256 _liquidity, uint256 _deadline) external onlyRebalancer returns (uint256 amount0, uint256 amount1) {
+    function split(
+        address _pair, 
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) external onlyRebalancer returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = _split(_pair, _liquidity, _deadline);
     }
 
     // remove liquity by fund manager, which split the liquity to token0 and token1
-    function splitByManager(address _pair, uint256 _liquidity, uint256 _deadline) external onlyFundManager returns (uint256 amount0, uint256 amount1) {
+    function splitByManager(
+        address _pair, 
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) external onlyFundManager returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = _split(_pair, _liquidity, _deadline);
     }
 
@@ -241,7 +253,12 @@ contract FundController is Ownable {
     }
 
     // rebalance the liquity from a pool to another
-    function rebalance(address _oldPair, address _newPair, uint256 _liquidity, uint256 _deadline) external onlyRebalancer returns (uint256 newLiquidity) {
+    function rebalance(
+        address _oldPair, 
+        address _newPair, 
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) external onlyRebalancer returns (uint256 newLiquidity) {
         require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
         address oldRouter = pairRouters[_oldPair];
         address newRouter = pairRouters[_newPair];
