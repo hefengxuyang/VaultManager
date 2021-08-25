@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./interfaces/swap/ISwapV2Factory.sol";
 import "./interfaces/swap/ISwapV2Pair.sol";
 import "./interfaces/IManager.sol";
 import "./VaultController.sol";
@@ -108,9 +109,21 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         require(_amount0Desired > 0 && _amount1Desired > 0, "The amount0Desired or amount1Desired is zero");
         require(_to != address(0), "Invalid receive address");
 
-        // Calculate amounts proportional to vault's holdings
-        (shares, amount0, amount1) = _calcSharesAndAmounts(_amount0Desired, _amount1Desired);
-        require(shares > 0 && amount0 > 0 && amount1 > 0, "Invalid shares and amounts");
+        // Calculate the optimal amouts proportional by base pair
+        require(ISwapV2Factory(ISwapV2Pair(basePair).factory()).getPair(token0, token1) != address(0), "Not exist pair");
+        (uint256 reserve0, uint256 reserve1, ) = ISwapV2Pair(basePair).getReserves();
+        uint256 amount1Optimal = _amount0Desired.mul(reserve1) / reserve0;
+        if (amount1Optimal <= _amount1Desired) {
+            (amount0, amount1) = (_amount0Desired, amount1Optimal);
+        } else {
+            uint256 amount0Optimal = _amount1Desired.mul(reserve0) / reserve1;
+            assert(amount0Optimal <= _amount0Desired);
+            (amount0, amount1) = (amount0Optimal, _amount1Desired);
+        }
+
+        // Calculate shares for amounts proportional to vault's holdings
+        shares = _calcShares(amount0, amount1);
+        require(shares > 0, "Invalid shares and amounts");
 
         // Pull in tokens from sender
         IERC20(token0).safeTransferFrom(msg.sender, vaultControllerContract, amount0);
@@ -126,14 +139,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
     }
 
     // calculate the shares and the needed amount0, amount1
-    function _calcSharesAndAmounts(
-        uint256 _amount0Desired, 
-        uint256 _amount1Desired
-    ) internal view returns (
-        uint256 shares,
-        uint256 amount0,
-        uint256 amount1
-    ) {
+    function _calcShares(uint256 _amount0, uint256 _amount1) internal view returns (uint256 shares) {
         uint256 totalSupply = totalSupply();
         (uint256 total0, uint256 total1) = getTotalAmounts();
 
@@ -141,16 +147,9 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         assert(totalSupply == 0 || (total0 > 0 && total1 > 0));
 
         if (totalSupply == 0) {
-            // For first deposit, just use the amounts desired
-            amount0 = _amount0Desired;
-            amount1 = _amount1Desired;
-            shares = Math.min(amount0, amount1);
+            shares = Math.min(_amount0, _amount1);
         } else {
-            uint256 cross = Math.min(_amount0Desired.mul(total1), _amount1Desired.mul(total0));
-
-            // Round up amounts
-            amount0 = cross.sub(1).div(total1).add(1);
-            amount1 = cross.sub(1).div(total0).add(1);
+            uint256 cross = Math.min(_amount0.mul(total1), _amount1.mul(total0));
             shares = cross.mul(totalSupply).div(total0).div(total1);
         }
     }
