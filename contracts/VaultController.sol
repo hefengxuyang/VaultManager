@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
 import "./interfaces/IMigrator.sol";
 import "./interfaces/swap/ISwapV2Pair.sol";
@@ -229,6 +230,8 @@ contract VaultController is Ownable {
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
         address token1 = ISwapV2Pair(_pair).token1();
+        TransferHelper.safeApprove(token0, router, _desiredAmount0);
+        TransferHelper.safeApprove(token1, router, _desiredAmount1);
         (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
     }
 
