@@ -12,19 +12,11 @@ interface IController {
 
     function depositToPool(address _pair, uint256 _amount) external;
 
-    function depositToPoolByManager(address _pair, uint256 _amount) external;
-
     function withdrawFromPool(address _pair, uint256 _amount) external;
-
-    function withdrawFromPoolByManager(address _pair, uint256 _amount) external;
 
     function split(address _pair, uint256 _liquidity, uint256 _deadline) external returns (uint256, uint256);
 
-    function splitByManager(address _pair, uint256 _liquidity, uint256 _deadline) external returns (uint256, uint256);
-
     function compose(address _pair, uint256 _desiredAmount0, uint256 _desiredAmount1, uint256 _deadline) external returns (uint256, uint256, uint256);
-
-    function composeByManager(address _pair, uint256 _desiredAmount0, uint256 _desiredAmount1, uint256 _deadline) external returns (uint256, uint256, uint256);
 
     function rebalance(address _oldPair, address _newPair, uint256 _liquidity, uint256 _deadline) external returns (uint256);
 

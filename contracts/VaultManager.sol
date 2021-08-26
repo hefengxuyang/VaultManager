@@ -129,8 +129,8 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         IERC20(token1).safeTransferFrom(msg.sender, vaultControllerContract, amount1);
 
         // Compose into the base pair liquity
-        (, , uint256 liquidity) = vaultController.composeByManager(basePair, amount0, amount1, uint256(-1));
-        vaultController.depositToPoolByManager(basePair, liquidity);
+        (, , uint256 liquidity) = vaultController.compose(basePair, amount0, amount1, uint256(-1));
+        vaultController.depositToPool(basePair, liquidity);
 
         // Mint shares to recipient
         _mint(_to, shares);
@@ -209,8 +209,8 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
             uint256 stakedAmount = vaultController.getPoolPrincipal(curPairToken);
             uint256 withdrawAmount = stakedAmount.mul(_shares).div(_totalSupply);
             if (withdrawAmount == 0) continue;
-            vaultController.withdrawFromPoolByManager(curPairToken, withdrawAmount);  // withdraw contain principal and reward 
-            (uint256 amount0, uint256 amount1) = vaultController.splitByManager(curPairToken, withdrawAmount, deadline);
+            vaultController.withdrawFromPool(curPairToken, withdrawAmount);  // withdraw contain principal and reward 
+            (uint256 amount0, uint256 amount1) = vaultController.split(curPairToken, withdrawAmount, deadline);
             totalAmount0 = totalAmount0.add(amount0);
             totalAmount1 = totalAmount1.add(amount1);
         }

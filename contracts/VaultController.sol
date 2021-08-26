@@ -80,17 +80,17 @@ contract VaultController is Ownable {
     }
 
     modifier onlyGovernance() {
-        require(governance == msg.sender, "Caller is not the governance.");
+        require(msg.sender == governance, "Caller is not the governance.");
+        _;
+    }
+
+    modifier onlyStrategy() {
+        require(msg.sender == manager || msg.sender == rebalancer, "Caller is not the manager or rebalancer.");
         _;
     }
 
     modifier onlyRebalancer() {
-        require(rebalancer == msg.sender, "Caller is not the rebalancer.");
-        _;
-    }
-
-    modifier onlyManager() {
-        require(manager == msg.sender, "Caller is not the manager.");
+        require(msg.sender == rebalancer, "Caller is not the rebalancer.");
         _;
     }
 
@@ -146,7 +146,8 @@ contract VaultController is Ownable {
         _approveTo(_token, migrator, _amount);
     }
 
-    function _depositToPool(address _pair, uint256 _amount) internal {
+    // deposit to pool
+    function depositToPool(address _pair, uint256 _amount) external onlyStrategy {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         LiquidityPool pool = masterPools[master];
@@ -158,17 +159,8 @@ contract VaultController is Ownable {
         emit DepositToPool(_pair, _amount);
     }
 
-    // deposit by rebalancer
-    function depositToPool(address _pair, uint256 _amount) external onlyRebalancer {
-        _depositToPool(_pair, _amount);
-    }
-
-    // deposit by manager
-    function depositToPoolByManager(address _pair, uint256 _amount) external onlyManager {
-        _depositToPool(_pair, _amount);
-    }
-
-    function _withdrawFromPool(address _pair, uint256 _amount) internal {
+    // withdraw from pool
+    function withdrawFromPool(address _pair, uint256 _amount) external onlyStrategy {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         LiquidityPool pool = masterPools[master];
@@ -180,21 +172,12 @@ contract VaultController is Ownable {
         emit WithdrawFromPool(_pair, _amount);
     }
 
-    // withdraw by rebalancer
-    function withdrawFromPool(address _pair, uint256 _amount) external onlyRebalancer {
-        _withdrawFromPool(_pair, _amount);
-    }
-
-    // withdraw by manager
-    function withdrawFromPoolByManager(address _pair, uint256 _amount) external onlyManager {
-        _withdrawFromPool(_pair, _amount);
-    }
-
-    function _split(
+    // remove liquity, which split the liquity to token0 and token1
+    function split(
         address _pair, 
         uint256 _liquidity, 
         uint256 _deadline
-    ) internal returns (uint256 amount0, uint256 amount1) {
+    ) external onlyStrategy returns (uint256 amount0, uint256 amount1) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
@@ -202,30 +185,13 @@ contract VaultController is Ownable {
         (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
     }
 
-    // remove liquity by rebalancer, which split the liquity to token0 and token1
-    function split(
-        address _pair, 
-        uint256 _liquidity, 
-        uint256 _deadline
-    ) external onlyRebalancer returns (uint256 amount0, uint256 amount1) {
-        (amount0, amount1) = _split(_pair, _liquidity, _deadline);
-    }
-
-    // remove liquity by manager, which split the liquity to token0 and token1
-    function splitByManager(
-        address _pair, 
-        uint256 _liquidity, 
-        uint256 _deadline
-    ) external onlyManager returns (uint256 amount0, uint256 amount1) {
-        (amount0, amount1) = _split(_pair, _liquidity, _deadline);
-    }
-
-    function _compose(
+    // add liquity, which compose token0 and token1 into liquity
+    function compose(
         address _pair, 
         uint256 _desiredAmount0, 
         uint256 _desiredAmount1, 
         uint256 _deadline
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+    ) external onlyStrategy returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
@@ -233,26 +199,6 @@ contract VaultController is Ownable {
         TransferHelper.safeApprove(token0, router, _desiredAmount0);
         TransferHelper.safeApprove(token1, router, _desiredAmount1);
         (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
-    }
-
-    // add liquity by rebalancer, which compose token0 and token1 into liquity
-    function compose(
-        address _pair, 
-        uint256 _desiredAmount0, 
-        uint256 _desiredAmount1, 
-        uint256 _deadline
-    ) external onlyRebalancer returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
-        (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
-    }
-
-    // add liquity by manager, which compose token0 and token1 into liquity
-    function composeByManager(
-        address _pair, 
-        uint256 _desiredAmount0, 
-        uint256 _desiredAmount1, 
-        uint256 _deadline
-    ) external onlyManager returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
-        (amount0, amount1, liquidity) = _compose(_pair, _desiredAmount0, _desiredAmount1, _deadline);
     }
 
     // rebalance the liquity from a pool to another
