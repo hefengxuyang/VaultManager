@@ -182,6 +182,7 @@ contract VaultController is Ownable {
         address router = pairRouters[_pair];
         address token0 = ISwapV2Pair(_pair).token0();
         address token1 = ISwapV2Pair(_pair).token1();
+        TransferHelper.safeApprove(_pair, router, _liquidity);
         (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
     }
 
