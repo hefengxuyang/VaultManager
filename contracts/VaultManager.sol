@@ -110,7 +110,6 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         require(_to != address(0), "Invalid receive address");
 
         // Calculate the optimal amouts proportional by base pair
-        require(ISwapV2Factory(ISwapV2Pair(basePair).factory()).getPair(token0, token1) != address(0), "Not exist pair");
         (uint256 reserve0, uint256 reserve1, ) = ISwapV2Pair(basePair).getReserves();
         uint256 amount1Optimal = _amount0Desired.mul(reserve1) / reserve0;
         if (amount1Optimal <= _amount1Desired) {
@@ -130,7 +129,8 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         IERC20(token1).safeTransferFrom(msg.sender, vaultControllerContract, amount1);
 
         // Compose into the base pair liquity
-        vaultController.composeByManager(basePair, amount0, amount1, uint256(-1));
+        (, , uint256 liquidity) = vaultController.composeByManager(basePair, amount0, amount1, uint256(-1));
+        vaultController.depositToPoolByManager(basePair, liquidity);
 
         // Mint shares to recipient
         _mint(_to, shares);
@@ -208,6 +208,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
             address curPairToken = pairs[i];
             uint256 stakedAmount = vaultController.getPoolPrincipal(curPairToken);
             uint256 withdrawAmount = stakedAmount.mul(_shares).div(_totalSupply);
+            if (withdrawAmount == 0) continue;
             vaultController.withdrawFromPoolByManager(curPairToken, withdrawAmount);  // withdraw contain principal and reward 
             (uint256 amount0, uint256 amount1) = vaultController.splitByManager(curPairToken, withdrawAmount, deadline);
             totalAmount0 = totalAmount0.add(amount0);
@@ -242,10 +243,10 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         uint256 feeAmount1 = amount1.mul(withdrawalFeeRate).div(1e18);
         uint256 amount0AfterFee = amount0.sub(feeAmount0);
         uint256 amount1AfterFee = amount1.sub(feeAmount1);
-        IERC20(token0).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, feeAmount0);
-        IERC20(token1).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, feeAmount1);
-        IERC20(token0).safeTransferFrom(vaultControllerContract, _to, amount0AfterFee);
-        IERC20(token1).safeTransferFrom(vaultControllerContract, _to, amount1AfterFee);
+        if (feeAmount0 > 0) IERC20(token0).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, feeAmount0);
+        if (feeAmount1 > 0) IERC20(token1).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, feeAmount1);
+        if (amount0AfterFee > 0) IERC20(token0).safeTransferFrom(vaultControllerContract, _to, amount0AfterFee);
+        if (amount1AfterFee > 0) IERC20(token1).safeTransferFrom(vaultControllerContract, _to, amount1AfterFee);
     }
 
     // withdraw from reward by shares
@@ -259,10 +260,11 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
             address rewardToken = vaultController.getRewardToken(pairs[i]);
             uint256 totalRewardAmount = vaultController.getTokenBalance(rewardToken);
             uint256 rewardAmount = totalRewardAmount.mul(_shares).div(_totalSupply);
+            if (rewardAmount == 0) continue;
             uint256 rewardFeeAmount = rewardAmount.mul(withdrawalFeeRate).div(1e18);
             uint256 rewardAmountAfterFee = rewardAmount.sub(rewardFeeAmount);
-            IERC20(rewardToken).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, rewardFeeAmount);
-            IERC20(rewardToken).safeTransferFrom(vaultControllerContract, _to, rewardAmountAfterFee);
+            if (rewardFeeAmount > 0) IERC20(rewardToken).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, rewardFeeAmount);
+            if (rewardAmountAfterFee > 0) IERC20(rewardToken).safeTransferFrom(vaultControllerContract, _to, rewardAmountAfterFee);
         }
     }
 
