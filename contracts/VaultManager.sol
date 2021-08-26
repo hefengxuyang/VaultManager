@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./interfaces/swap/ISwapV2Factory.sol";
 import "./interfaces/swap/ISwapV2Pair.sol";
 import "./interfaces/IManager.sol";
 import "./VaultController.sol";
