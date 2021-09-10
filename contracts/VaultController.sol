@@ -221,6 +221,7 @@ contract VaultController is Ownable {
         uint256 _liquidity, 
         uint256 _deadline
     ) internal returns (uint256 newLiquidity) {
+        // remove liquidity
         uint256 oldAmount0;
         uint256 oldAmount1;
         {
@@ -229,14 +230,10 @@ contract VaultController is Ownable {
             (oldAmount0, oldAmount1) = ISwapV2Router(_oldRouter).removeLiquidity(_token0, _token1, _liquidity, 1, 1, address(this), _deadline);
         }
         
-        uint256 newAmount0;
-        uint256 newAmount1;
-        {
-            // scope for addLiquidity, avoids stack too deep errors
-            TransferHelper.safeApprove(_token0, _newRouter, oldAmount0);
-            TransferHelper.safeApprove(_token1, _newRouter, oldAmount1);
-            (newAmount0, newAmount1, newLiquidity) = ISwapV2Router(_newRouter).addLiquidity(_token0, _token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
-        }
+        // add liquidity
+        TransferHelper.safeApprove(_token0, _newRouter, oldAmount0);
+        TransferHelper.safeApprove(_token1, _newRouter, oldAmount1);
+        (, , newLiquidity) = ISwapV2Router(_newRouter).addLiquidity(_token0, _token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
     }
 
     // rebalance is used to migrate the liquity from a pool to another
@@ -245,11 +242,38 @@ contract VaultController is Ownable {
         address _newPair, 
         uint256 _liquidity, 
         uint256 _deadline
-    ) external onlyRebalancer returns (uint256 newLiquidity) {
+    ) external onlyStrategy returns (uint256 newLiquidity) {
         require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
         address oldRouter = pairRouters[_oldPair];
         address newRouter = pairRouters[_newPair];
         newLiquidity = _migrate(oldRouter, newRouter, token0, token1, _oldPair, _liquidity, _deadline);
+        emit Rebalance(_liquidity, newLiquidity);
+    }
+
+    // migrate the liquity from a pool to another
+    function migrate(
+        address _oldPair, 
+        address _newPair, 
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) external onlyStrategy returns (uint256 newLiquidity) {
+        require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
+        address oldRouter = pairRouters[_oldPair];
+        address newRouter = pairRouters[_newPair];
+
+        // remove liquidity
+        uint256 oldAmount0;
+        uint256 oldAmount1;
+        {
+            // scope for removeLiquidity, avoids stack too deep errors
+            TransferHelper.safeApprove(_oldPair, oldRouter, _liquidity);
+            (oldAmount0, oldAmount1) = ISwapV2Router(oldRouter).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
+        }
+        
+        // add liquidity
+        TransferHelper.safeApprove(token0, newRouter, oldAmount0);
+        TransferHelper.safeApprove(token1, newRouter, oldAmount1);
+        (, , newLiquidity) = ISwapV2Router(newRouter).addLiquidity(token0, token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
         emit Rebalance(_liquidity, newLiquidity);
     }
 
