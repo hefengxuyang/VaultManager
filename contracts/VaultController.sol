@@ -30,6 +30,10 @@ contract VaultController is Ownable {
     address public migrator;
     address public manager;
 
+    address public basePair;                 // The base pair
+    address public immutable token0;         // The first token of the pair
+    address public immutable token1;         // The second token of the pair
+
     address[] public supportedPairs;
 
     enum LiquidityPool { BakeryPool, MdexPool, PancakePool }
@@ -47,6 +51,7 @@ contract VaultController is Ownable {
     event FundRebalancerSet(address _rebalancer);
     event FundMigratorSet(address _migrator);
     event VaultManagerSet(address _manager);
+    event BasePairSet(address _pair);
 
     event ApproveTo(address _token, address _receiver, uint256 _amount);
     event DepositToPool(address _pair, uint256 _amount);
@@ -56,6 +61,10 @@ contract VaultController is Ownable {
     constructor() public {
         governance = msg.sender;
         rebalancer = msg.sender;
+
+        basePair = 0x1F53f4972AAc7985A784C84f739Be4d73FB6d14f;
+        token0 = ISwapV2Pair(basePair).token0();
+        token1 = ISwapV2Pair(basePair).token1();
 
         addSupportedMaster(BAKERY_MASTER_CONTRACT, LiquidityPool.BakeryPool);
         // addSupportedMaster(MDEX_MASTER_CONTRACT, LiquidityPool.MdexPool);
@@ -71,7 +80,6 @@ contract VaultController is Ownable {
     }
 
     function addSupportedPair(address _pair, address _master, address _router, uint256 _pid) internal {
-        require(!pairTokenExists[_pair], "Liquity pair token has exists.");
         supportedPairs.push(_pair);
         pairTokenExists[_pair] = true;
         pairMasters[_pair] = _master;
@@ -112,6 +120,11 @@ contract VaultController is Ownable {
     function setVaultManager(address _manager) external onlyGovernance {
         manager = _manager;
         emit VaultManagerSet(_manager);
+    }
+
+    function setBasePair(address _pair) external onlyGovernance {
+        basePair = _pair;
+        emit BasePairSet(_pair);
     }
 
     function _approveTo(address _token, address _receiver, uint256 _amount) internal {
@@ -180,8 +193,6 @@ contract VaultController is Ownable {
     ) external onlyStrategy returns (uint256 amount0, uint256 amount1) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
-        address token0 = ISwapV2Pair(_pair).token0();
-        address token1 = ISwapV2Pair(_pair).token1();
         TransferHelper.safeApprove(_pair, router, _liquidity);
         (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
     }
@@ -195,14 +206,40 @@ contract VaultController is Ownable {
     ) external onlyStrategy returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
-        address token0 = ISwapV2Pair(_pair).token0();
-        address token1 = ISwapV2Pair(_pair).token1();
         TransferHelper.safeApprove(token0, router, _desiredAmount0);
         TransferHelper.safeApprove(token1, router, _desiredAmount1);
         (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
     }
 
-    // rebalance the liquity from a pool to another
+    // migrate the liquity from a pool to another
+    function _migrate(
+        address _oldRouter, 
+        address _newRouter, 
+        address _token0, 
+        address _token1,
+        address _oldPair,  
+        uint256 _liquidity, 
+        uint256 _deadline
+    ) internal returns (uint256 newLiquidity) {
+        uint256 oldAmount0;
+        uint256 oldAmount1;
+        {
+            // scope for removeLiquidity, avoids stack too deep errors
+            TransferHelper.safeApprove(_oldPair, _oldRouter, _liquidity);
+            (oldAmount0, oldAmount1) = ISwapV2Router(_oldRouter).removeLiquidity(_token0, _token1, _liquidity, 1, 1, address(this), _deadline);
+        }
+        
+        uint256 newAmount0;
+        uint256 newAmount1;
+        {
+            // scope for addLiquidity, avoids stack too deep errors
+            TransferHelper.safeApprove(_token0, _newRouter, oldAmount0);
+            TransferHelper.safeApprove(_token1, _newRouter, oldAmount1);
+            (newAmount0, newAmount1, newLiquidity) = ISwapV2Router(_newRouter).addLiquidity(_token0, _token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
+        }
+    }
+
+    // rebalance is used to migrate the liquity from a pool to another
     function rebalance(
         address _oldPair, 
         address _newPair, 
@@ -212,13 +249,11 @@ contract VaultController is Ownable {
         require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
         address oldRouter = pairRouters[_oldPair];
         address newRouter = pairRouters[_newPair];
-        address token0 = ISwapV2Pair(_oldPair).token0();
-        address token1 = ISwapV2Pair(_oldPair).token1();
-        newLiquidity = IMigrator(migrator).migrate(oldRouter, newRouter, token0, token1, _liquidity, _deadline);
+        newLiquidity = _migrate(oldRouter, newRouter, token0, token1, _oldPair, _liquidity, _deadline);
         emit Rebalance(_liquidity, newLiquidity);
     }
 
-    // swap
+    // swap tokens
     function swap(
         address _router, 
         address _fromToken, 
