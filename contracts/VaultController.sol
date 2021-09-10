@@ -44,8 +44,8 @@ contract VaultController is Ownable {
     // address constant private MDEX_MASTER_CONTRACT = 0xe2f2a5C287993345a840Db3B0845fbC70f5935a5;
     address constant private PANCAKE_MASTER_CONTRACT = 0x55fC7a3117107adcAE6C6a5b06E69b99C3fa4113;
 
-    event FundGovernanceSet(address _governance);
-    event VaultManagerSet(address _manager);
+    event GovernanceSet(address _governance);
+    event ManagerSet(address _manager);
     event BasePairSet(address _pair);
 
     event ApproveTo(address _token, address _receiver, uint256 _amount);
@@ -93,12 +93,12 @@ contract VaultController is Ownable {
 
     function setGovernance(address _governance) external onlyOwner {
         governance = _governance;
-        emit FundGovernanceSet(_governance);
+        emit GovernanceSet(_governance);
     }
 
-    function setVaultManager(address _manager) external onlyGovernance {
+    function setManager(address _manager) external onlyGovernance {
         manager = _manager;
-        emit VaultManagerSet(_manager);
+        emit ManagerSet(_manager);
     }
 
     function setBasePair(address _pair) external onlyGovernance {
