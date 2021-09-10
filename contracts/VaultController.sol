@@ -218,6 +218,21 @@ contract VaultController is Ownable {
         emit Rebalance(_liquidity, newLiquidity);
     }
 
+    // swap
+    function swap(
+        address _router, 
+        address _fromToken, 
+        address _toToken, 
+        uint256 _amount, 
+        uint256 _deadline
+    ) external onlyStrategy returns (uint256[] memory amounts) {
+        require(_fromToken != address(0) && _toToken != address(0), "Invalid swap tokens.");
+        address[] memory path = new address[](2);
+        (path[0], path[1]) = (_fromToken, _toToken);
+        TransferHelper.safeApprove(_fromToken, _router, _amount);
+        amounts = ISwapV2Router(_router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+    }
+
     // get the contract balance by token
     function getTokenBalance(address _token) external view returns (uint256) {
         require(_token != address(0), "Invalid ERC20 token contract.");
