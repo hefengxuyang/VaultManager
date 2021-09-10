@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
-import "./interfaces/IMigrator.sol";
 import "./interfaces/swap/ISwapV2Pair.sol";
 import "./interfaces/swap/ISwapV2Router.sol";
 import "./interfaces/master/IBakeryMaster.sol";
@@ -26,7 +25,6 @@ contract VaultController is Ownable {
     using SafeMath for uint256;
 
     address public governance;
-    address public migrator;
     address public manager;
 
     address public basePair;                 // The base pair
@@ -47,7 +45,6 @@ contract VaultController is Ownable {
     address constant private PANCAKE_MASTER_CONTRACT = 0x55fC7a3117107adcAE6C6a5b06E69b99C3fa4113;
 
     event FundGovernanceSet(address _governance);
-    event FundMigratorSet(address _migrator);
     event VaultManagerSet(address _manager);
     event BasePairSet(address _pair);
 
@@ -99,11 +96,6 @@ contract VaultController is Ownable {
         emit FundGovernanceSet(_governance);
     }
 
-    function setMigrator(address _migrator) external onlyGovernance {
-        migrator = _migrator;
-        emit FundMigratorSet(_migrator);
-    }
-
     function setVaultManager(address _manager) external onlyGovernance {
         manager = _manager;
         emit VaultManagerSet(_manager);
@@ -140,10 +132,6 @@ contract VaultController is Ownable {
 
     function approveToManager(address _token, uint256 _amount) external onlyGovernance {
         _approveTo(_token, manager, _amount);
-    }
-
-    function approveToMigrator(address _token, uint256 _amount) external onlyGovernance {
-        _approveTo(_token, migrator, _amount);
     }
 
     // deposit to pool
