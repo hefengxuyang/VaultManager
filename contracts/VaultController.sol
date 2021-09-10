@@ -26,7 +26,6 @@ contract VaultController is Ownable {
     using SafeMath for uint256;
 
     address public governance;
-    address public rebalancer;
     address public migrator;
     address public manager;
 
@@ -48,7 +47,6 @@ contract VaultController is Ownable {
     address constant private PANCAKE_MASTER_CONTRACT = 0x55fC7a3117107adcAE6C6a5b06E69b99C3fa4113;
 
     event FundGovernanceSet(address _governance);
-    event FundRebalancerSet(address _rebalancer);
     event FundMigratorSet(address _migrator);
     event VaultManagerSet(address _manager);
     event BasePairSet(address _pair);
@@ -60,7 +58,6 @@ contract VaultController is Ownable {
 
     constructor() public {
         governance = msg.sender;
-        rebalancer = msg.sender;
 
         basePair = 0x1F53f4972AAc7985A784C84f739Be4d73FB6d14f;
         token0 = ISwapV2Pair(basePair).token0();
@@ -93,23 +90,13 @@ contract VaultController is Ownable {
     }
 
     modifier onlyStrategy() {
-        require(msg.sender == manager || msg.sender == rebalancer, "Caller is not the manager or rebalancer.");
-        _;
-    }
-
-    modifier onlyRebalancer() {
-        require(msg.sender == rebalancer, "Caller is not the rebalancer.");
+        require(msg.sender == manager || msg.sender == governance, "Caller is not the manager or strategy.");
         _;
     }
 
     function setGovernance(address _governance) external onlyOwner {
         governance = _governance;
         emit FundGovernanceSet(_governance);
-    }
-
-    function setRebalancer(address _rebalancer) external onlyGovernance {
-        rebalancer = _rebalancer;
-        emit FundRebalancerSet(_rebalancer);
     }
 
     function setMigrator(address _migrator) external onlyGovernance {
@@ -209,45 +196,6 @@ contract VaultController is Ownable {
         TransferHelper.safeApprove(token0, router, _desiredAmount0);
         TransferHelper.safeApprove(token1, router, _desiredAmount1);
         (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
-    }
-
-    // migrate the liquity from a pool to another
-    function _migrate(
-        address _oldRouter, 
-        address _newRouter, 
-        address _token0, 
-        address _token1,
-        address _oldPair,  
-        uint256 _liquidity, 
-        uint256 _deadline
-    ) internal returns (uint256 newLiquidity) {
-        // remove liquidity
-        uint256 oldAmount0;
-        uint256 oldAmount1;
-        {
-            // scope for removeLiquidity, avoids stack too deep errors
-            TransferHelper.safeApprove(_oldPair, _oldRouter, _liquidity);
-            (oldAmount0, oldAmount1) = ISwapV2Router(_oldRouter).removeLiquidity(_token0, _token1, _liquidity, 1, 1, address(this), _deadline);
-        }
-        
-        // add liquidity
-        TransferHelper.safeApprove(_token0, _newRouter, oldAmount0);
-        TransferHelper.safeApprove(_token1, _newRouter, oldAmount1);
-        (, , newLiquidity) = ISwapV2Router(_newRouter).addLiquidity(_token0, _token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
-    }
-
-    // rebalance is used to migrate the liquity from a pool to another
-    function rebalance(
-        address _oldPair, 
-        address _newPair, 
-        uint256 _liquidity, 
-        uint256 _deadline
-    ) external onlyStrategy returns (uint256 newLiquidity) {
-        require(pairTokenExists[_oldPair] && pairTokenExists[_newPair], "Invalid liquity pair contract.");
-        address oldRouter = pairRouters[_oldPair];
-        address newRouter = pairRouters[_newPair];
-        newLiquidity = _migrate(oldRouter, newRouter, token0, token1, _oldPair, _liquidity, _deadline);
-        emit Rebalance(_liquidity, newLiquidity);
     }
 
     // migrate the liquity from a pool to another
