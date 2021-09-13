@@ -221,11 +221,30 @@ contract VaultController is Ownable {
         uint256 _amount, 
         uint256 _deadline
     ) external onlyStrategy returns (uint256[] memory amounts) {
+        require(_router != address(0), "Invalid router.");
         require(_fromToken != address(0) && _toToken != address(0), "Invalid swap tokens.");
         address[] memory path = new address[](2);
         (path[0], path[1]) = (_fromToken, _toToken);
         TransferHelper.safeApprove(_fromToken, _router, _amount);
         amounts = ISwapV2Router(_router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+    }
+
+    // swap reward token
+    function swapReward(
+        address _pair, 
+        address _toToken, 
+        uint256 _amount, 
+        uint256 _deadline
+    ) external onlyStrategy returns (uint256[] memory amounts) {
+        require(_toToken == token0 || _toToken != token1, "Invalid to tokens.");
+        address rewardToken = getRewardToken(_pair);
+        address router = pairRouters[_pair];
+
+        // swap to token which compose to pair
+        address[] memory path = new address[](2);
+        (path[0], path[1]) = (rewardToken, _toToken);
+        TransferHelper.safeApprove(rewardToken, router, _amount);
+        amounts = ISwapV2Router(router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
     }
 
     // get the contract balance by token
@@ -235,7 +254,7 @@ contract VaultController is Ownable {
     }
 
     // get the address of reward token by pair
-    function getRewardToken(address _pair) external view returns (address) {
+    function getRewardToken(address _pair) public view returns (address) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         LiquidityPool pool = masterPools[master];
