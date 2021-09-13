@@ -193,9 +193,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
 
         // Burn shares
         _burn(msg.sender, _shares);
-        (amount0, amount1) = _withdrawPrincipal(_shares, totalSupply, _to);    // Send principal tokens to recipient
-        _withdrawReward(_shares, totalSupply, _to);       // Send reward tokens to recipient
-        
+        (amount0, amount1) = _withdraw(_shares, totalSupply, _to);
         emit Withdraw(msg.sender, _to, _shares, amount0, amount1);
     }
 
@@ -221,8 +219,8 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         }
     }
 
-    // withdraw from principal by shares
-    function _withdrawPrincipal(
+    // withdraw from controller by shares, it contains the reward token which have converted to pair liquity.
+    function _withdraw(
         uint256 _shares, 
         uint256 _totalSupply, 
         address _to
@@ -252,25 +250,6 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
         if (feeAmount1 > 0) IERC20(token1).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, feeAmount1);
         if (amount0AfterFee > 0) IERC20(token0).safeTransferFrom(vaultControllerContract, _to, amount0AfterFee);
         if (amount1AfterFee > 0) IERC20(token1).safeTransferFrom(vaultControllerContract, _to, amount1AfterFee);
-    }
-
-    // withdraw from reward by shares
-    function _withdrawReward(
-        uint256 _shares, 
-        uint256 _totalSupply, 
-        address _to
-    ) internal {
-        address[] memory pairs = vaultController.getSupportedPairs();
-        for (uint256 i = 0; i < pairs.length; i++) {
-            address rewardToken = vaultController.getRewardToken(pairs[i]);
-            uint256 totalRewardAmount = vaultController.getTokenBalance(rewardToken);
-            uint256 rewardAmount = totalRewardAmount.mul(_shares).div(_totalSupply);
-            if (rewardAmount == 0) continue;
-            uint256 rewardFeeAmount = rewardAmount.mul(withdrawalFeeRate).div(1e18);
-            uint256 rewardAmountAfterFee = rewardAmount.sub(rewardFeeAmount);
-            if (rewardFeeAmount > 0) IERC20(rewardToken).safeTransferFrom(vaultControllerContract, withdrawalFeeBeneficiary, rewardFeeAmount);
-            if (rewardAmountAfterFee > 0) IERC20(rewardToken).safeTransferFrom(vaultControllerContract, _to, rewardAmountAfterFee);
-        }
     }
 
     // forward the lost funds to user
