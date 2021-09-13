@@ -28,7 +28,7 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
     address payable private vaultControllerContract; // Address of the VaultController.
     VaultController public vaultController;    // VaultController contract object.
 
-    address public immutable basePair;      // Initilize of the pair
+    address public basePair;                 // Initilize of the pair
     address public immutable token0;         // The first token of the pair
     address public immutable token1;         // The second token of the pair
 
@@ -75,6 +75,12 @@ contract VaultManager is IManager, Ownable, ERC20, ReentrancyGuard {
     function setVaultController(address payable _vaultController) external fundEnabled onlyOwner {
         vaultControllerContract = _vaultController;
         vaultController = VaultController(vaultControllerContract);
+        basePair = vaultController.basePair();  // update base pair
+    }
+
+    // update basePair by the VaultController basePair
+    function updateBasePair() external fundEnabled onlyOwner {
+        basePair = vaultController.basePair();
     }
 
     // set the max totalSupply

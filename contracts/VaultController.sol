@@ -102,6 +102,7 @@ contract VaultController is Ownable {
     }
 
     function setBasePair(address _pair) external onlyGovernance {
+        require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         basePair = _pair;
         emit BasePairSet(_pair);
     }
