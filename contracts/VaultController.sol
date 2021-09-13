@@ -26,6 +26,7 @@ contract VaultController is Ownable {
 
     address public governance;
     address public manager;
+    address public strategy;
 
     address public basePair;                 // The base pair
     address public immutable token0;         // The first token of the pair
@@ -46,6 +47,7 @@ contract VaultController is Ownable {
 
     event GovernanceSet(address _governance);
     event ManagerSet(address _manager);
+    event StrategySet(address _strategy);
     event BasePairSet(address _pair);
 
     event ApproveTo(address _token, address _receiver, uint256 _amount);
@@ -87,7 +89,12 @@ contract VaultController is Ownable {
     }
 
     modifier onlyStrategy() {
-        require(msg.sender == manager || msg.sender == governance, "Caller is not the manager or strategy.");
+        require(msg.sender == strategy || msg.sender == governance, "Caller is not the strategy or governance.");
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(msg.sender == manager || msg.sender == strategy || msg.sender == governance, "Caller is not the operators.");
         _;
     }
 
@@ -99,6 +106,11 @@ contract VaultController is Ownable {
     function setManager(address _manager) external onlyGovernance {
         manager = _manager;
         emit ManagerSet(_manager);
+    }
+
+    function setStrategy(address _strategy) external onlyGovernance {
+        strategy = _strategy;
+        emit StrategySet(_strategy);
     }
 
     function setBasePair(address _pair) external onlyGovernance {
@@ -136,7 +148,7 @@ contract VaultController is Ownable {
     }
 
     // deposit to pool
-    function depositToPool(address _pair, uint256 _amount) external onlyStrategy {
+    function depositToPool(address _pair, uint256 _amount) external onlyOperator {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         LiquidityPool pool = masterPools[master];
@@ -149,7 +161,7 @@ contract VaultController is Ownable {
     }
 
     // withdraw from pool
-    function withdrawFromPool(address _pair, uint256 _amount) external onlyStrategy {
+    function withdrawFromPool(address _pair, uint256 _amount) external onlyOperator {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address master = pairMasters[_pair];
         LiquidityPool pool = masterPools[master];
@@ -166,7 +178,7 @@ contract VaultController is Ownable {
         address _pair, 
         uint256 _liquidity, 
         uint256 _deadline
-    ) external onlyStrategy returns (uint256 amount0, uint256 amount1) {
+    ) external onlyOperator returns (uint256 amount0, uint256 amount1) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
         TransferHelper.safeApprove(_pair, router, _liquidity);
@@ -179,7 +191,7 @@ contract VaultController is Ownable {
         uint256 _desiredAmount0, 
         uint256 _desiredAmount1, 
         uint256 _deadline
-    ) external onlyStrategy returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+    ) external onlyOperator returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
         require(pairTokenExists[_pair], "Invalid liquity pair contract.");
         address router = pairRouters[_pair];
         TransferHelper.safeApprove(token0, router, _desiredAmount0);
