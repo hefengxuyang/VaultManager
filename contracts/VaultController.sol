@@ -249,7 +249,7 @@ contract VaultController is Ownable {
         uint256 _amount, 
         uint256 _deadline
     ) external onlyStrategy returns (uint256[] memory amounts) {
-        require(_toToken == token0 || _toToken != token1, "Invalid to tokens.");
+        require(_toToken == token0 || _toToken == token1, "Invalid to tokens.");
         address rewardToken = getRewardToken(_pair);
         address router = pairRouters[_pair];
 
