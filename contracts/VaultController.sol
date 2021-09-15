@@ -58,7 +58,7 @@ contract VaultController is Ownable {
     constructor() public {
         governance = msg.sender;
 
-        basePair = 0x1F53f4972AAc7985A784C84f739Be4d73FB6d14f;
+        basePair = 0xcde42733E82f663B671575bC30183709DD89D2a9;
         token0 = ISwapV2Pair(basePair).token0();
         token1 = ISwapV2Pair(basePair).token1();
 
@@ -66,9 +66,9 @@ contract VaultController is Ownable {
         // addSupportedMaster(MDEX_MASTER_CONTRACT, LiquidityPool.MdexPool);
         addSupportedMaster(PANCAKE_MASTER_CONTRACT, LiquidityPool.PancakePool);
 
-        addSupportedPair(0x7BDa39b1B4cD4010836E7FC48cb6B817EEcFa94E, BAKERY_MASTER_CONTRACT, 0xf716059b58E95De36635500c2c23761A89A95497, 0);
+        addSupportedPair(0x34be5Cb31DD28839Dab7886f19AD9c3bCd26B7a1, BAKERY_MASTER_CONTRACT, 0xf716059b58E95De36635500c2c23761A89A95497, 0);
         // addSupportedPair(0x6B175474E89094C44Da98b954EedeAC495271d0F, MDEX_MASTER_CONTRACT, 0x96C5D20b2a975c050e4220BE276ACe4892f4b41A, 1);
-        addSupportedPair(0x1F53f4972AAc7985A784C84f739Be4d73FB6d14f, PANCAKE_MASTER_CONTRACT, 0x7F67a7b681f3655C1b247068a9C977EcdeDd0768, 1);
+        addSupportedPair(0xcde42733E82f663B671575bC30183709DD89D2a9, PANCAKE_MASTER_CONTRACT, 0x7F67a7b681f3655C1b247068a9C977EcdeDd0768, 3);
     }
 
     function addSupportedMaster(address _master, LiquidityPool _pool) internal {
