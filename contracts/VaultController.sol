@@ -92,12 +92,12 @@ contract VaultController is Ownable {
     }
 
     modifier onlyStrategy() {
-        require(msg.sender == strategy || msg.sender == governance, "Caller is not the strategy or governance.");
+        require(msg.sender == strategy, "Caller is not the strategy.");
         _;
     }
 
     modifier onlyOperator() {
-        require(msg.sender == manager || msg.sender == strategy || msg.sender == governance, "Caller is not the operators.");
+        require(msg.sender == manager || msg.sender == strategy, "Caller is not the operators.");
         _;
     }
 
