@@ -53,7 +53,10 @@ contract VaultController is Ownable {
     event ApproveTo(address _token, address _receiver, uint256 _amount);
     event DepositToPool(address _pair, uint256 _amount);
     event WithdrawFromPool(address _pair, uint256 _amount);
-    event Rebalance(uint256 _oldLiquity, uint256 _newLiquity);
+    event Split(address _pair, uint256 _liquidity, uint256 amount0, uint256 amount1);
+    event Compose(address _pair, uint256 _liquidity, uint256 amount0, uint256 amount1);
+    event Migrate(address _oldPair, uint256 _oldLiquity, address _newPair, uint256 _newLiquity);
+    event Swap(uint256 _amount, address[] _path, uint256[] _amounts);
 
     constructor() public {
         governance = msg.sender;
@@ -183,6 +186,7 @@ contract VaultController is Ownable {
         address router = pairRouters[_pair];
         TransferHelper.safeApprove(_pair, router, _liquidity);
         (amount0, amount1) = ISwapV2Router(router).removeLiquidity(token0, token1, _liquidity, 1, 1, address(this), _deadline);
+        emit Split(_pair, _liquidity, amount0, amount1);
     }
 
     // add liquity, which compose token0 and token1 into liquity
@@ -197,6 +201,7 @@ contract VaultController is Ownable {
         TransferHelper.safeApprove(token0, router, _desiredAmount0);
         TransferHelper.safeApprove(token1, router, _desiredAmount1);
         (amount0, amount1, liquidity) = ISwapV2Router(router).addLiquidity(token0, token1, _desiredAmount0, _desiredAmount1, 1, 1, address(this), _deadline);
+        emit Compose(_pair, liquidity, amount0, amount1);
     }
 
     // migrate the liquity from a pool to another
@@ -223,23 +228,20 @@ contract VaultController is Ownable {
         TransferHelper.safeApprove(token0, newRouter, oldAmount0);
         TransferHelper.safeApprove(token1, newRouter, oldAmount1);
         (, , newLiquidity) = ISwapV2Router(newRouter).addLiquidity(token0, token1, oldAmount0, oldAmount1, 1, 1, address(this), _deadline);
-        emit Rebalance(_liquidity, newLiquidity);
+        emit Migrate(_oldPair, _liquidity, _newPair, newLiquidity);
     }
 
     // swap tokens
     function swap(
-        address _router, 
-        address _fromToken, 
-        address _toToken, 
-        uint256 _amount, 
+        address _router,
+        uint256 _amount,  
+        address[] memory path, 
         uint256 _deadline
     ) external onlyStrategy returns (uint256[] memory amounts) {
-        require(_router != address(0), "Invalid router.");
-        require(_fromToken != address(0) && _toToken != address(0), "Invalid swap tokens.");
-        address[] memory path = new address[](2);
-        (path[0], path[1]) = (_fromToken, _toToken);
-        TransferHelper.safeApprove(_fromToken, _router, _amount);
+        require(path.length >= 2, 'Invalid Path');
+        TransferHelper.safeApprove(path[0], _router, _amount);
         amounts = ISwapV2Router(_router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+        emit Swap(_amount, path, amounts);
     }
 
     // swap reward token
@@ -258,6 +260,7 @@ contract VaultController is Ownable {
         (path[0], path[1]) = (rewardToken, _toToken);
         TransferHelper.safeApprove(rewardToken, router, _amount);
         amounts = ISwapV2Router(router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+        emit Swap(_amount, path, amounts);
     }
 
     // get the contract balance by token
