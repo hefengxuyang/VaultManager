@@ -247,8 +247,8 @@ contract VaultController is Ownable {
     // swap reward token
     function swapReward(
         address _pair, 
+        uint256 _amount,
         address _toToken, 
-        uint256 _amount, 
         uint256 _deadline
     ) external onlyStrategy returns (uint256[] memory amounts) {
         require(_toToken == token0 || _toToken == token1, "Invalid to tokens.");

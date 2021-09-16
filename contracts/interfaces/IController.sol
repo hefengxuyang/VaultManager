@@ -24,9 +24,9 @@ interface IController {
 
     function migrate(address _oldPair, address _newPair, uint256 _liquidity, uint256 _deadline) external returns (uint256);
 
-    function swap(address _router, address _fromToken, address _toToken, uint256 _amount, uint256 _deadline) external returns (uint256[] memory);
+    function swap(address _router, uint256 _amount, address[] calldata path, uint256 _deadline) external returns (uint256[] memory);
 
-    function swapReward(address _pair, address _toToken, uint256 _amount, uint256 _deadline) external returns (uint256[] memory);
+    function swapReward(address _pair, uint256 _amount, address _toToken, uint256 _deadline) external returns (uint256[] memory);
 
     function getTokenBalance(address _token) external view returns (uint256);
 
