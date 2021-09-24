@@ -233,14 +233,15 @@ contract VaultController is Ownable {
 
     // swap tokens
     function swap(
-        address _router,
+        address _pair,
         uint256 _amount,  
         address[] memory path, 
         uint256 _deadline
     ) external onlyStrategy returns (uint256[] memory amounts) {
         require(path.length >= 2, 'Invalid Path');
-        TransferHelper.safeApprove(path[0], _router, _amount);
-        amounts = ISwapV2Router(_router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+        address router = pairRouters[_pair];
+        TransferHelper.safeApprove(path[0], router, _amount);
+        amounts = ISwapV2Router(router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
         emit Swap(_amount, path, amounts);
     }
 
@@ -259,6 +260,25 @@ contract VaultController is Ownable {
         address[] memory path = new address[](2);
         (path[0], path[1]) = (rewardToken, _toToken);
         TransferHelper.safeApprove(rewardToken, router, _amount);
+        amounts = ISwapV2Router(router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
+        emit Swap(_amount, path, amounts);
+    }
+
+    // swap remain tokens which contain toke0 and token1, swap one of these tokens to another.
+    function swapRemain(
+        address _pair, 
+        uint256 _amount,
+        address _fromToken, 
+        uint256 _deadline
+    ) external onlyStrategy returns (uint256[] memory amounts) {
+        require(_fromToken == token0 || _fromToken == token1, "Invalid from tokens.");
+        address router = pairRouters[_pair];
+
+        // swap to token which compose to pair
+        address[] memory path = new address[](2);
+        address toToken = _fromToken == token0 ? token1 : token0;
+        (path[0], path[1]) = (_fromToken, toToken);
+        TransferHelper.safeApprove(_fromToken, router, _amount);
         amounts = ISwapV2Router(router).swapExactTokensForTokens(_amount, 0, path, address(this), _deadline);
         emit Swap(_amount, path, amounts);
     }
