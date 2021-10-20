@@ -7,7 +7,7 @@ VaultManager is the auto vaults for liquidity providers.
 ![image](docs/images/arch.png)
 
 
-## Contracts
+## Contracts Architecture
 
 ### Code Tree
 
@@ -62,3 +62,14 @@ Contract principal function:
 - convertReward
 - convertRemain
 - rebalance
+
+
+## BSC Testnet
+
+BSC testnet contract address:
+
+VaultManager: `0x2dDF95b3E31436633ee96CDd702e68Bea7e388a3`
+
+VaultController: `0xC80bFE01F89A6614a354b2010b7192c3d3C49D56`
+
+VaultStrategy: `0xe3A4dB6f3eeb80c540f21e02771183a0d8D0Aa98`
