@@ -76,10 +76,12 @@ module.exports = {
     // }
     
     bsctestnet: {
-      // provider: function () {
-      //   return new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-1-s1.binance.org:8545/");
-      // },
-      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-1-s1.binance.org:8545/"),
+      // provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-1-s1.binance.org:8545/"),
+      // provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-1-s2.binance.org:8545/"),
+      // provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-1-s3.binance.org:8545/"),
+      // provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-2-s1.binance.org:8545/"),
+      // provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-2-s2.binance.org:8545/"),
+      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, "https://data-seed-prebsc-2-s2.binance.org:8545/"),
       network_id: 97,
       networkCheckTimeout: 100000000
     },
